@@ -97,10 +97,12 @@ namespace CWDev.SLNTools.Core
             get { return m_relativePath; }
             set { m_relativePath = value; }
         }
-        public string FullPath
-        {
-            get { return Environment.ExpandEnvironmentVariables(Path.Combine(Path.GetDirectoryName(r_container.SolutionFullPath), m_relativePath)); }
-        }
+
+        private string m_fullPath;
+        public string FullPath => m_fullPath ??
+                                  (m_fullPath = Environment.ExpandEnvironmentVariables(
+                                      Path.GetFullPath(Path.Combine(Path.GetDirectoryName(r_container.SolutionFullPath), m_relativePath))));
+
         public string ParentFolderGuid
         {
             get { return m_parentFolderGuid; }
@@ -110,6 +112,7 @@ namespace CWDev.SLNTools.Core
         {
             get { return r_projectSections; }
         }
+
         public PropertyLineHashList VersionControlLines
         {
             get { return r_versionControlLines; }
@@ -176,6 +179,7 @@ namespace CWDev.SLNTools.Core
                 }
             }
         }
+
         public IEnumerable<Project> Dependencies
         {
             get
@@ -206,12 +210,10 @@ namespace CWDev.SLNTools.Core
                     case KnownProjectTypeGuid.JSharp:
                     case KnownProjectTypeGuid.FSharp:
                     default:
-                        if (! File.Exists(this.FullPath))
+                        if (! File.Exists(FullPath))
                         {
-                            throw new SolutionFileException(string.Format(
-                                        "Cannot detect dependencies of projet '{0}' because the project file cannot be found.\nProject full path: '{1}'",
-                                        m_projectName,
-                                        this.FullPath));
+                            throw new SolutionFileException(
+                                $"Cannot detect dependencies of projet '{m_projectName}' because the project file cannot be found.\nProject full path: '{FullPath}'");
                         }
 
                         var docManaged = new XmlDocument();
@@ -220,18 +222,33 @@ namespace CWDev.SLNTools.Core
                         var xmlManager = new XmlNamespaceManager(docManaged.NameTable);
                         xmlManager.AddNamespace("prefix", "http://schemas.microsoft.com/developer/msbuild/2003");
 
-                        foreach (XmlNode xmlNode in docManaged.SelectNodes(@"//prefix:ProjectReference", xmlManager))
+                        var projectReferenceXpath = (docManaged.SelectNodes(@"//Project[@Sdk]")?.Count > 0)
+                            ? "//ProjectReference"
+                            : "//prefix:ProjectReference";
+
+                        var references = docManaged.SelectNodes(projectReferenceXpath, xmlManager);
+                        if (references == null) // highly unlikely
                         {
-                            string dependencyGuid = xmlNode.SelectSingleNode(@"prefix:Project", xmlManager).InnerText.Trim(); // TODO handle null
-                            string dependencyName = xmlNode.SelectSingleNode(@"prefix:Name", xmlManager).InnerText.Trim(); // TODO handle null
-                            yield return FindProjectInContainer(
-                                        dependencyGuid,
-                                        "Cannot find one of the dependency of project '{0}'.\nProject guid: {1}\nDependency guid: {2}\nDependency name: {3}\nReference found in: ProjectReference node of file '{4}'",
-                                        m_projectName,
-                                        r_projectGuid,
-                                        dependencyGuid,
-                                        dependencyName,
-                                        this.FullPath);
+                            yield break;
+                        }
+
+                        var currentProjectFolder = Path.GetDirectoryName(FullPath);
+
+                        foreach (XmlNode xmlNode in references)
+                        {
+                            if (xmlNode.Attributes != null)
+                            {
+                                var relativePath = xmlNode.Attributes["Include"].InnerText.Trim();
+                                var fullProjectPath = Path.GetFullPath(Path.Combine(currentProjectFolder, relativePath));
+
+                                yield return FindProjectInContainerByFullPath(
+                                    fullProjectPath,
+                                    "Cannot find one of the dependency of project '{0}'.\nProject guid: {1}\nInclude path: {2}\nReference found in: ProjectReference node of file '{3}'",
+                                    m_projectName,
+                                    r_projectGuid,
+                                    relativePath,
+                                    FullPath);
+                            }
                         }
                         break;
 
@@ -344,6 +361,18 @@ namespace CWDev.SLNTools.Core
             {
                 throw new SolutionFileException(string.Format(errorMessageFormat, errorMessageParams));
             }
+
+            return project;
+        }
+
+        private Project FindProjectInContainerByFullPath(string fullProjectPath, string errorMessageFormat, params object[] errorMessageParams)
+        {
+            var project = r_container.Projects.FindByFullPath(fullProjectPath);
+            if (project == null)
+            {
+                throw new SolutionFileException(string.Format(errorMessageFormat, errorMessageParams));
+            }
+
             return project;
         }
 

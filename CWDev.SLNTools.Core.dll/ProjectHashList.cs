@@ -96,6 +96,19 @@ namespace CWDev.SLNTools.Core
             return null;
         }
 
+        public Project FindByFullPath(string projectFullPath)
+        {
+            foreach (var item in this)
+            {
+                if (string.Compare(item.FullPath, projectFullPath, StringComparison.InvariantCultureIgnoreCase) == 0)
+                {
+                    return item;
+                }
+            }
+
+            return null;
+        }
+
         public void Sort()
         {
             Sort((p1, p2) => StringComparer.InvariantCultureIgnoreCase.Compare(p1.ProjectFullName, p2.ProjectFullName));
