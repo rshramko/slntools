@@ -3,8 +3,8 @@
      xmlns:netfx="http://schemas.microsoft.com/wix/NetFxExtension">
 
   <!--The following variables must be modified for each release. A new GUID should be generated each time.-->
-  <?define ProductVersion=1.1.4 ?>
-  <?define ProductCode=BD71A18D-870E-4DC5-9A89-2A0FC2BEAB30?>
+  <?define ProductVersion=1.1.3.1 ?>
+  <?define ProductCode=6F93C7C0-4036-4739-907B-68AFFB449B44?>
 
   <!--The following variable should NEVER be modified. -->
   <?define UpgradeCode=9A791ED6-C6EA-4234-84E2-9A08122BBC61 ?>
@@ -13,29 +13,29 @@
            Name="SLN File Tools"
            Language="1033"
            Version="$(var.ProductVersion)"
-           Manufacturer="Mike Therien"
+           Manufacturer="Roman Shramko"
            UpgradeCode="$(var.UpgradeCode)">
-		<Package InstallerVersion="200" Compressed="yes" />
+        <Package InstallerVersion="200" Compressed="yes" />
 
-		<Media Id="1" Cabinet="media.cab" EmbedCab="yes" />
+        <Media Id="1" Cabinet="media.cab" EmbedCab="yes" />
 
-		<Directory Id="TARGETDIR" Name="SourceDir">
-			<Directory Id="ProgramFilesFolder">
-				<Directory Id="INSTALLLOCATION" Name="SLN File Tools" />
-			</Directory>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLLOCATION" Name="SLN File Tools" />
+            </Directory>
             <Directory Id="ProgramMenuFolder">
                 <Directory Id="ApplicationProgramsFolder" Name="SLN File Tools"/>
             </Directory>
-		</Directory>
+        </Directory>
 
     <DirectoryRef Id="INSTALLLOCATION">
       <Component Id="Component_SLNTools.exe" Guid="*">
         <File Id="Component_SLNTools.exe" Source="$(var.SLNTools.exe.TargetDir)\SLNTools.exe" KeyPath="yes" />
-				  
-	  	<Environment 
+
+        <Environment 
                   Id="Environment" 
                   Name="PATH" 
-				  Action="set"
+                  Action="set"
                   Part="last" 
                   System="yes" 
                   Value="[INSTALLLOCATION]" /> 
@@ -62,18 +62,18 @@
         <File Source="$(var.CWDev.SLNTools.UIKit.dll.TargetDir)\CWDev.SLNTools.UIKit.dll" />
       </Component>
     </DirectoryRef>
-	<DirectoryRef Id="ApplicationProgramsFolder">
-		<Component Id="ApplicationShortcut" Guid="*">
-			<Shortcut Id="ApplicationStartMenuShortcut" 
-					  Name="SLN File Tools"
-					  Description="Tools for managing a SLN file"
-					  Target="[#Component_SLNTools.exe]"
-					  WorkingDirectory="INSTALLLOCATION"
-					  />
-			<RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
-			<RegistryValue Root="HKCU" Key="Software\Microsoft\SLNTools" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
-		</Component>
-	</DirectoryRef>
+    <DirectoryRef Id="ApplicationProgramsFolder">
+        <Component Id="ApplicationShortcut" Guid="*">
+            <Shortcut Id="ApplicationStartMenuShortcut" 
+                      Name="SLN File Tools"
+                      Description="Tools for managing a SLN file"
+                      Target="[#Component_SLNTools.exe]"
+                      WorkingDirectory="INSTALLLOCATION"
+                      />
+            <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
+            <RegistryValue Root="HKCU" Key="Software\Microsoft\SLNTools" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+        </Component>
+    </DirectoryRef>
 
     <Feature Id="ProductFeature" Title="Application" Level="1">
       <ComponentRef Id="Component_SLNTools.exe" />
@@ -83,7 +83,6 @@
       <ComponentRef Id="ApplicationShortcut" />
     </Feature>
 
-				  
     <!-- Validation : .Net framework installed or not. ====================================================-->
 
     <PropertyRef Id="NETFRAMEWORK45"/>
@@ -91,24 +90,12 @@
       <![CDATA[Installed OR NETFRAMEWORK45]]>
     </Condition>
 
-    <!-- Validation : Another version of the product is already installed ? ===============================-->
-
-    <Condition Message="A more recent version of this product is already installed. Installation of this version cannot continue. To configure or remove the existing version of this product, use Add/Remove Programs on the Control Panel"><![CDATA[NOT NEWERPRODUCTFOUND]]></Condition>
-
-    <Property Id="PREVIOUSVERSIONSINSTALLED" Secure="yes" />
-    <Property Id="NEWERPRODUCTFOUND" Secure="yes" />
-    <Upgrade Id="$(var.UpgradeCode)">
-      <UpgradeVersion IncludeMaximum="no" Maximum="$(var.ProductVersion)" Property="PREVIOUSVERSIONSINSTALLED" />
-      <UpgradeVersion IncludeMinimum="yes" Minimum="$(var.ProductVersion)" Property="NEWERPRODUCTFOUND" OnlyDetect="yes" />
-    </Upgrade>
+    <MajorUpgrade AllowSameVersionUpgrades="yes" 
+                  DowngradeErrorMessage="A newer version of [ProductName] is already installed. If you are sure you want to downgrade, remove the existing installation via Programs and Features." />
 
     <!-- Execute Sequence tweaking ========================================================================-->
 
     <Property Id="ALLUSERS"><![CDATA[1]]></Property>
-
-    <InstallExecuteSequence>
-      <RemoveExistingProducts After="InstallInitialize" />
-    </InstallExecuteSequence>
 
     <!-- UI configuration =================================================================================-->
 
